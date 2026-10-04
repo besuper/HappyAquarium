@@ -1,4 +1,5 @@
 import json
+import time
 
 from . import catalog
 from ..storage import new_tank_item
@@ -6,6 +7,7 @@ from ..storage import new_tank_item
 OK = {"error": 0}
 ERR_UNKNOWN_ITEM = 1
 ERR_NOT_ENOUGH_MONEY = 2
+MAX_XP_PER_FEEDING = 500
 
 # Calls fired after boot whose answer only needs the right shape
 # (DataManager.successAlert / successExpeditions / successConstruct).
@@ -50,6 +52,36 @@ def purchase(player, params):
     return {**reply, "items": bought, "coins": player["coins"], "pearls": player["pearls"]}
 
 
+def feed_fish(player, params):
+    """comm/feed_fish.php, sent by FishTank.updateFeedingData after a feeding session.
+
+    Eating happens client-side; the client then reports the fish it fed (fish_json),
+    its remaining food (user_foods_json) and its xp/coins (player_json).
+    """
+    now = int(time.time())
+    items = {row["tankItemId"]: row for tank in player["tanks"] for row in tank["items"]}
+    for fed in json.loads(params.get("fish_json") or "[]"):
+        row = items.get(fed.get("tankItemId"))
+        if row is None:
+            continue
+        row["hunger"] = max(0, min(100, int(fed.get("hunger", row["hunger"]))))
+        row["last_hunger_update"] = now
+        for key in ("xLocation", "yLocation", "zLocation"):
+            if key in fed:
+                row[key] = fed[key]
+        row["flipped"] = 1 if fed.get("flipped") else 0
+
+    for food in json.loads(params.get("user_foods_json") or "[]"):
+        key = str(food.get("foodTypeId"))
+        if key in player["foods"]:
+            player["foods"][key] = max(0, min(player["foods"][key], int(food.get("amount", 0))))
+
+    client_xp = int(json.loads(params.get("player_json") or "{}").get("xp") or 0)
+    if player["xp"] < client_xp <= player["xp"] + MAX_XP_PER_FEEDING:
+        player["xp"] = client_xp
+    return OK
+
+
 def set_key(player, params):
     """comm/set_key.php: client-side key/value metadata (tutorial step, settings...)."""
     data = json.loads(params.get("actiondata") or "{}")
@@ -61,4 +93,5 @@ def set_key(player, params):
 HANDLERS = {
     "purchase": purchase,
     "set_key": set_key,
+    "feed_fish": feed_fish,
 }

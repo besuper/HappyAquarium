@@ -6,7 +6,17 @@ from ..storage import app_user_id
 TEN_YEARS = 10 * 365 * 86400
 
 
-def user_tank(player, tank, app_id):
+def current_hunger(tank_item, now):
+    elapsed = max(0, now - tank_item.get("last_hunger_update", now))
+    hunger = tank_item["hunger"] + elapsed * 100 // catalog.SECONDS_TO_STARVE
+    return min(100, hunger)
+
+
+def tank_items(tank, now):
+    return [{**row, "hunger": current_hunger(row, now), "last_hunger_update": now} for row in tank["items"]]
+
+
+def user_tank(player, tank, app_id, now):
     """UserTank.parseFromJSON row."""
     return {
         "user_id": player["user_id"],
@@ -22,7 +32,7 @@ def user_tank(player, tank, app_id):
         "toxic_fish_count": 0,
         "toxic_fish_active": 0,
         "level_required": 1,
-        "tank_items": tank["items"],
+        "tank_items": tank_items(tank, now),
         "gravel_frame": 1,
         "gravel_id": tank["gravel_id"],
         "likes": 0,
@@ -37,7 +47,7 @@ def user_tank(player, tank, app_id):
     }
 
 
-def app_user(player):
+def app_user(player, now):
     """AppUser.parseFromJSON row; the same object is sent as owner and player."""
     app_id = app_user_id(player["user_id"])
     return {
@@ -52,7 +62,8 @@ def app_user(player):
         "actionPoints": player["pearls"],
         "xp": player["xp"],
         "userSnacks": 0,
-        "userTanks": [user_tank(player, t, app_id) for t in player["tanks"]],
+        "userTanks": [user_tank(player, t, app_id, now) for t in player["tanks"]],
+        "userFoods": [{"appUserId": app_id, "foodTypeId": int(k), "amount": v} for k, v in player["foods"].items()],
         "playingFriends": [],
         "isFan": 1,
         "HaveEmail": 0,
@@ -63,7 +74,7 @@ def app_user(player):
 
 def build(player, cdn):
     now = int(time.time())
-    user = app_user(player)
+    user = app_user(player, now)
     return {
         "timestamp": now,
         "platform": catalog.PLATFORM,
@@ -79,7 +90,7 @@ def build(player, cdn):
         "wallpaper": {str(k): v for k, v in catalog.WALLPAPERS.items()},
         "storeItems": catalog.store_items(),
         "storeFoods": {},
-        "foodTypes": {},
+        "foodTypes": {str(k): v for k, v in catalog.FOOD_TYPES.items()},
         "food_items": {},
         "generic_items": {},
         "owner": user,

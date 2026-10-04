@@ -6,7 +6,10 @@ import time
 import zlib
 from pathlib import Path
 
+from .game.catalog import STARTING_FOOD as _STARTING_FOOD
+
 SAVE_VERSION = 1
+STARTING_FOOD = {str(k): v for k, v in _STARTING_FOOD.items()}
 USER_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 _lock = threading.Lock()
@@ -29,7 +32,7 @@ def new_tank_item(tank_item_id, item_id, name, user_tank_id=1, sex=1, age=100, x
         "itemId": item_id,
         "name": name,
         "sex": sex,
-        "hunger": 100,
+        "hunger": 50,  # 0 = full, 100 = starving
         "mood": 100,
         "status": 1,
         "dateCreated": now,
@@ -63,6 +66,7 @@ def new_player(user_id: str) -> dict:
         "coins": 5000,
         "pearls": 50,
         "xp": 1,
+        "foods": dict(STARTING_FOOD),
         # flashAppUserMetaData, written by the client through comm/set_key.php.
         # "ts" is the tutorial step; its "Get My Fish" step needs the original store, so skip it.
         "meta": {"ts": "tutorialComplete"},

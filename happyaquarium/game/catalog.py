@@ -49,6 +49,19 @@ PLATFORM = {
 ITEM_TYPE_FISH = 1  # Item.ITEM_TYPE_FISH
 STORE_TYPE_ITEM = 0  # StoreItem.TYPE_ITEM
 
+FLAKES_TO_FILL = 3
+SECONDS_TO_STARVE = 4 * 3600
+
+# Food type ids hardcoded in the client (UI_Main.feedRegular / feedSuper)
+FOOD_REGULAR = 1
+FOOD_SUPER = 7
+FOOD_TYPES = {
+    FOOD_REGULAR: {"foodTypeId": FOOD_REGULAR, "title": "Fish Food", "description": "", "artUrl": ""},
+    FOOD_SUPER: {"foodTypeId": FOOD_SUPER, "title": "Super Food", "description": "", "artUrl": ""},
+}
+# Shakes given to new players (one shake = one click with the feed cursor)
+STARTING_FOOD = {FOOD_REGULAR: 100, FOOD_SUPER: 10}
+
 
 def fish(item_id, title, art, coins=0, pearls=0, level=1, description=""):
     """An Item row (Item.parseFromJSON). `art` is relative to the CDN root."""
@@ -70,8 +83,8 @@ def fish(item_id, title, art, coins=0, pearls=0, level=1, description=""):
         "population_required": 1,
         "level_required": level,
         "pollution_caused": 1,
-        "food_required": 1,
-        "food_frequency": 1,
+        "food_required": FLAKES_TO_FILL,
+        "food_frequency": SECONDS_TO_STARVE,
         "growth_rate": 1,
         "movement_type": 1,
         "should_preload": 1,

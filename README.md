@@ -16,7 +16,8 @@ played again in a browser, through [Ruffle](https://ruffle.rs/).
 - [x] Player saves (coins, pearls, tank contents, client metadata) persisted as JSON
 - [x] Store and purchasing (only items whose art survived)
 - [x] Fish swim and animate in the tank
-- [ ] Feeding, cleaning, coin collection, selling, breeding
+- [x] Feeding
+- [ ] Buying food, cleaning, coin collection, selling, breeding, fish growth persistence
 - [ ] UI text (`lang/en.xml` is lost: some labels show raw `TXT_*` keys)
 - [ ] Real tanks, gravels, wallpapers, decorations and most fish (lost, see [wanted list](docs/ASSET_FORMATS.md#wanted))
 - [ ] Sound effects and music (lost; served as silence)
@@ -124,10 +125,10 @@ play, watch the server log for `unhandled comm call`, and implement it in
 
 ## Credits
 
-- **CrowdStar** — original developer of Happy Aquarium
-- **101XP** — operator of the game in its final years (the client build used here)
-- **PandaFake** — saved the 2021 client files this project is built on
-- [**Ruffle**](https://ruffle.rs/) — the Flash Player emulator that runs the client
+- **CrowdStar** original developer of Happy Aquarium
+- **101XP** operator of the game in its final years (the client build used here)
+- **PandaFake** saved the 2021 client files this project is built on
+- [**Ruffle**](https://ruffle.rs/) the Flash Player emulator that runs the client
 - The [Happy Aquarium Wiki](https://happyaquarium.fandom.com/) community, for documenting the game
 
 ## Disclaimer
