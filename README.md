@@ -8,13 +8,14 @@ played again in a browser, through [Ruffle](https://ruffle.rs/).
 ![Happy Aquarium running on this server](docs/screenshot.png)
 
 > **Status: early work in progress.** The client boots into a working tank and the store
-> works, but almost all the original art and the server-side catalogue are lost.
+> works. The original item catalogue was recovered, but almost all the original art is lost.
 
 ## Status
 
 - [x] Original 101XP client boots (preloader, HUD, Harold, settings, day/night light)
 - [x] Player saves (coins, pearls, tank contents, client metadata) persisted as JSON
-- [x] Store and purchasing (only items whose art survived)
+- [x] Original item catalogue (304 items with their real prices, levels, timers and sizes)
+- [x] Store and purchasing (only items whose art survived: currently the Clownfish)
 - [x] Fish swim and animate in the tank
 - [x] Feeding
 - [ ] Buying food, cleaning, coin collection, selling, breeding, fish growth persistence
@@ -103,11 +104,14 @@ happy-aquarium-server/
 │   ├── swf.py              on-the-fly fixes to the original client
 │   ├── game/
 │   │   ├── catalog.py      items, tanks, gravel, store, feature flags
+│   │   ├── data/           original 2010 CrowdStar catalogue (populate_store.php)
 │   │   ├── init_data.py    get_init_data reply
 │   │   └── actions.py      other API calls (purchase, set_key...)
 │   └── templates/play.html page embedding the client with Ruffle
 ├── assets/                 the game CDN (original files + generated stubs)
-├── tools/make_stub_swf.py  regenerates the placeholder SWFs
+├── tools/
+│   ├── make_stub_swf.py    regenerates the placeholder SWFs
+│   └── missing_assets.py   lists the catalogue's art files missing from assets/
 ├── docs/                   protocol and asset format notes
 └── data/players/           player saves (git-ignored)
 ```
@@ -116,8 +120,10 @@ happy-aquarium-server/
 
 The most valuable contribution is **original game files**. If you played Happy Aquarium,
 your browser cache, an old hard drive or a Flash cache folder may still hold some of them.
-The [wanted list](docs/ASSET_FORMATS.md#wanted) says what is missing and where the client
-looks for it. A captured `get_init_data` response would bring back the real catalogue.
+`python tools/missing_assets.py` prints every art file the original catalogue references
+and that is still missing (373 of 374), with its exact path. Drop a recovered file into
+`assets/` at that path and the item appears in the game with its original data.
+See also the [wanted list](docs/ASSET_FORMATS.md#wanted).
 
 Code contributions are welcome too: the easiest way to find the next missing feature is to
 play, watch the server log for `unhandled comm call`, and implement it in

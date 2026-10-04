@@ -7,9 +7,14 @@ TEN_YEARS = 10 * 365 * 86400
 
 
 def current_hunger(tank_item, now):
+    # Hunger rises from 0 (full) to 100 (starving) over the item's food_frequency seconds;
+    # items that never eat (crawlers: food_frequency 0) keep their stored value.
+    item = catalog.ITEMS.get(tank_item["itemId"])
+    frequency = item["food_frequency"] if item else 0
+    if frequency <= 0:
+        return tank_item["hunger"]
     elapsed = max(0, now - tank_item.get("last_hunger_update", now))
-    hunger = tank_item["hunger"] + elapsed * 100 // catalog.SECONDS_TO_STARVE
-    return min(100, hunger)
+    return min(100, tank_item["hunger"] + elapsed * 100 // frequency)
 
 
 def tank_items(tank, now):
@@ -114,8 +119,8 @@ def build(player, cdn):
         "collectionItems": {},
         "lighting_effects": {},
         "achievements": {},
-        "maleNames": ["Bubbles", "Finn", "Gill"],
-        "femaleNames": ["Coral", "Pearl", "Marina"],
+        "maleNames": catalog.MALE_NAMES,
+        "femaleNames": catalog.FEMALE_NAMES,
         "gameWinners": [],
         "midway_tickets": 0,
         "midway_game_purchases": 0,

@@ -6,6 +6,7 @@ import time
 import zlib
 from pathlib import Path
 
+from .game.catalog import STARTER_FISH
 from .game.catalog import STARTING_FOOD as _STARTING_FOOD
 
 SAVE_VERSION = 1
@@ -81,7 +82,7 @@ def new_player(user_id: str) -> dict:
                 "tank_bg_id": 0,
                 "lighting_id": 0,
                 "pollution": 0,
-                "items": [new_tank_item(1, 1, "Nemo")],
+                "items": [new_tank_item(1, STARTER_FISH, "Nemo")],
             }
         ],
     }

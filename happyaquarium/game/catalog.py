@@ -1,9 +1,14 @@
-"""Static game catalogue sent in get_init_data.
+"""Game catalogue sent in get_init_data.
 
-The real catalogue lived on CrowdStar's/101XP's servers and was never archived, so
-only items whose art survived (or a stub) are listed here. Field names follow the
-parseFromJSON methods of the decompiled client (crowdstar.aquarium.data.*).
+Items come from the original 2010 CrowdStar catalogue; tanks, gravel and wallpapers are
+stubs (none were archived). Field names follow the parseFromJSON methods of the
+decompiled client (crowdstar.aquarium.data.*).
 """
+import json
+from pathlib import Path
+from urllib.parse import urlsplit
+
+from ..config import Config
 
 # Feature flags read through Game.getPlatformProperty(); a missing key crashes the
 # client (#1069), so every key is listed. Features without server support are off.
@@ -46,11 +51,7 @@ PLATFORM = {
     "zapayaAdsEnabled": False,
 }
 
-ITEM_TYPE_FISH = 1  # Item.ITEM_TYPE_FISH
 STORE_TYPE_ITEM = 0  # StoreItem.TYPE_ITEM
-
-FLAKES_TO_FILL = 3
-SECONDS_TO_STARVE = 4 * 3600
 
 # Food type ids hardcoded in the client (UI_Main.feedRegular / feedSuper)
 FOOD_REGULAR = 1
@@ -62,51 +63,79 @@ FOOD_TYPES = {
 # Shakes given to new players (one shake = one click with the feed cursor)
 STARTING_FOOD = {FOOD_REGULAR: 100, FOOD_SUPER: 10}
 
+CATALOGUE_FILE = Path(__file__).parent / "data" / "crowdstar_store_2010-03-05.json"
+_CATALOGUE = json.loads(CATALOGUE_FILE.read_text(encoding="utf-8"))
 
-def fish(item_id, title, art, coins=0, pearls=0, level=1, description=""):
-    """An Item row (Item.parseFromJSON). `art` is relative to the CDN root."""
+STARTER_FISH = 6  # Clownfish
+MALE_NAMES = _CATALOGUE["maleNames"]
+FEMALE_NAMES = _CATALOGUE["femaleNames"]
+
+
+def art_path(url):
+    """'http://cdnaquarium.crowdstar.com/swf/fish/X.swf?v=12' -> 'swf/fish/X.swf'"""
+    return urlsplit(url).path.lstrip("/") if url else ""
+
+
+def has_art(path):
+    return bool(path) and (Config.ASSETS_DIR / path).is_file()
+
+
+def convert_item(raw):
+    """2010 catalogue row -> Item.parseFromJSON row (art paths relative to the CDN root)."""
+    art = art_path(raw["artUrl"])
+    baby = art_path(raw.get("babyArtUrl"))
+    item_id = int(raw["itemId"])
     return {
         "item_id": item_id,
-        "item_type": ITEM_TYPE_FISH,
-        "title": title,
-        "title_english": title,
-        "description": description,
+        "item_type": int(raw["itemType"]),
+        "title": raw["title"],
+        "title_english": raw["title_english"],
+        "description": raw["description"].strip(),
         "art_url": art,
-        "baby_art_url": art,
+        "baby_art_url": baby if has_art(baby) else art,
         "alt_art_url": "",
-        "scale_factor": 1,
-        "alt_scale_factor": 1,
-        "base_speed": 1,
-        "coin_cost": coins,
-        "action_point_cost": pearls,  # pearls are called "action points" in the client
+        "scale_factor": float(raw["scaleFactor"]),
+        "alt_scale_factor": float(raw["scaleFactor"]),
+        "base_speed": int(raw["baseSpeed"]),
+        "coin_cost": int(raw["coinCost"]),
+        "action_point_cost": int(raw["actionPointCost"]),  # pearls
         "cost_mate_action_points": 0,
-        "population_required": 1,
-        "level_required": level,
-        "pollution_caused": 1,
-        "food_required": FLAKES_TO_FILL,
-        "food_frequency": SECONDS_TO_STARVE,
-        "growth_rate": 1,
-        "movement_type": 1,
+        "population_required": int(raw["populationRequired"]),
+        "level_required": int(raw["levelRequired"]),
+        "pollution_caused": int(raw["pollutionCaused"]),
+        "food_required": int(raw["foodRequired"]),  # flakes to go from starving to full
+        "food_frequency": int(raw["foodFrequency"]),  # seconds from full to starving
+        "growth_rate": int(raw["growthRate"]),  # seconds to grow up
+        "feed_image": raw.get("feedImage", ""),
+        "movement_type": int(raw["movementType"]),
+        "abilities": int(raw["abilities"]),
         "should_preload": 1,
         "frame_id": 0,
-        "animated": 0,
+        "animated": int(raw["animated"]),
         "life_span": 0,
         "charges": 0,
-        "provides_coins": 1,
-        "giftable": 1,
-        "breeds_with_item_ids": [item_id],
+        "provides_coins": int(raw["providesCoins"]),
+        "giftable": int(raw["giftable"]),
+        "breeds_with_item_ids": sorted({int(i) for i in raw["breedsWithItemIds"]}),
         "flags": 0,
         "force_gender": 0,
     }
 
 
-ITEMS = {
-    1: fish(1, "Three Stripe Clownfish", "swf/fish/AQ_Fish_01_ClownFishThreeStripe.swf", coins=16,
-            description="Flexy body allows this fish to get around quickly and avoid danger."),
-}
-
+ALL_ITEMS = {row["item_id"]: row for row in map(convert_item, _CATALOGUE["items"].values())}
+ITEMS = {item_id: row for item_id, row in ALL_ITEMS.items() if has_art(row["art_url"])}
+STORE_ROWS = {int(row["storeItemId"]): row for row in _CATALOGUE["storeItems"] if int(row["itemId"]) in ITEMS}
 # store_item_id -> item_id
-STORE = {1: 1}
+STORE = {store_id: int(row["itemId"]) for store_id, row in STORE_ROWS.items()}
+
+# NewStore.filterItems() forces the item titled exactly "Clownfish" into slot 1 of the fish
+# tab (itemList[1] = clownFish). With a single fish on sale, slot 0 becomes null and the
+# store crashes while sorting. Until more fish art is recovered, dodge the exact match.
+if sum(1 for item_id in STORE.values() if ITEMS[item_id]["item_type"] == 1) < 2:
+    for item in ITEMS.values():
+        if item["title"] == "Clownfish":
+            item["title"] += " "
+
 
 TANKS = {
     1: {
@@ -186,19 +215,22 @@ def store_items():
     """StoreItem rows (StoreItem.parseFromJSON) for everything in STORE."""
     rows = {}
     for store_id, item_id in STORE.items():
+        raw = STORE_ROWS[store_id]
         rows[str(store_id)] = {
             "store_item_id": store_id,
             "id": item_id,
             "item_id": item_id,
             "item_type": STORE_TYPE_ITEM,
-            "sex": 0,
-            "age": 0,
-            "status": 1,
-            "animated": 0,
+            "sex": int(raw["sex"]),
+            "age": int(raw["age"]),
+            "status": int(raw["status"]),
+            "animated": int(raw["animated"]),
             "flags": 0,
             "category_priority": ITEMS[item_id]["level_required"],
             "special_priority": 0,
-            "cost_override": 0,
+            "cost_override": int(raw["costOverride"]),
+            "cost_override_coins": int(raw["costOverrideCoins"]),
+            "cost_override_action_points": int(raw["costOverrideActionPoints"]),
             "is_on_sale": 0,
             "is_new": 0,
             "date_end": 0,
