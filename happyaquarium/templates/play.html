@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Happy Aquarium</title>
+    <style>
+        body {
+            margin: 0;
+            background: #0f2233;
+            color: #cfe6f5;
+            font: 14px sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #game {
+            width: 760px;
+            height: 660px;
+            margin-top: 16px;
+        }
+
+        footer {
+            margin: 12px;
+            opacity: .6;
+        }
+    </style>
+    <script src="{{ ruffle_url }}"></script>
+</head>
+
+<body>
+    <div id="game"></div>
+    <footer>Happy Aquarium preservation server &middot; playing as <b>{{ user }}</b></footer>
+    <script>
+        {% if flash_log %}
+        (() => {
+            const log = console.log.bind(console);
+            console.log = (...args) => {
+                log(...args);
+                const line = String(args[0] || "");
+                if (/log_adapter|avm2|ERROR/.test(line) && !/HttpNotOk|FetchError|giving up|Error loading LoadingItem/.test(line)) {
+                    navigator.sendBeacon("/debug/flash-log", line.replace(/%c/g, ""));
+                }
+            };
+        })();
+        {% endif %}
+        window.RufflePlayer = window.RufflePlayer || {};
+        window.RufflePlayer.config = { autoplay: "on", unmuteOverlay: "hidden", allowScriptAccess: true, logLevel: "info" };
+        window.addEventListener("load", () => {
+            const player = window.RufflePlayer.newest().createPlayer();
+            player.style.width = "760px";
+            player.style.height = "660px";
+            document.getElementById("game").appendChild(player);
+            player.ruffle().load({
+                url: "{{ flashvars.cdn_url }}preloader.swf",
+                parameters: {{ flashvars | tojson }},
+            allowScriptAccess: true,
+      });
+    });
+    </script>
+</body>
+
+</html>
