@@ -1,14 +1,14 @@
 import time
 
-from . import catalog
+from . import action
+from ..game import catalog
 from ..storage import app_user_id
 
 TEN_YEARS = 10 * 365 * 86400
 
 
 def current_hunger(tank_item, now):
-    # Hunger rises from 0 (full) to 100 (starving) over the item's food_frequency seconds;
-    # items that never eat (crawlers: food_frequency 0) keep their stored value.
+    # Hunger is inverted: 0 = full, 100 = starving. Crawlers have food_frequency 0 and never get hungry.
     item = catalog.ITEMS.get(tank_item["itemId"])
     frequency = item["food_frequency"] if item else 0
     if frequency <= 0:
@@ -22,7 +22,6 @@ def tank_items(tank, now):
 
 
 def user_tank(player, tank, app_id, now):
-    """UserTank.parseFromJSON row."""
     return {
         "user_id": player["user_id"],
         "user_tank_id": tank["user_tank_id"],
@@ -53,7 +52,6 @@ def user_tank(player, tank, app_id, now):
 
 
 def app_user(player, now):
-    """AppUser.parseFromJSON row; the same object is sent as owner and player."""
     app_id = app_user_id(player["user_id"])
     return {
         "user_id": player["user_id"],
@@ -77,9 +75,10 @@ def app_user(player, now):
     }
 
 
-def build(player, cdn):
+@action("get_init_data", saves=False)
+def get_init_data(ctx):
     now = int(time.time())
-    user = app_user(player, now)
+    user = app_user(ctx.player, now)
     return {
         "timestamp": now,
         "platform": catalog.PLATFORM,
@@ -87,22 +86,22 @@ def build(player, cdn):
         "textVersion": 1,
         "swfVer": 1,
         "storeVersion": 1,
-        "items": catalog.items(cdn),
+        "items": catalog.items(ctx.cdn),
         "parts": {},
-        "tanks": catalog.tanks(cdn),
+        "tanks": catalog.tanks(ctx.cdn),
         "tankProgressions": [],
         "gravel": {str(k): v for k, v in catalog.GRAVEL.items()},
         "wallpaper": {str(k): v for k, v in catalog.WALLPAPERS.items()},
         "storeItems": catalog.store_items(),
         "storeFoods": {},
         "foodTypes": {str(k): v for k, v in catalog.FOOD_TYPES.items()},
-        "food_items": {},
+        "food_items": catalog.food_items(),
         "generic_items": {},
         "owner": user,
         "player": user,
-        "flashAppUserMetaData": player["meta"],
+        "flashAppUserMetaData": ctx.player["meta"],
         "userCompositeItems": {},
-        # The client shows a paywall when date_subscription - date_subscription_current <= 0 and asking for a $2.99/month subscription (???)
+        # 101XP's $2.99/month paywall shows when date_subscription - date_subscription_current <= 0
         "date_subscription": now + TEN_YEARS,
         "date_subscription_current": now,
         "products": [],
@@ -124,6 +123,7 @@ def build(player, cdn):
         "gameWinners": [],
         "midway_tickets": 0,
         "midway_game_purchases": 0,
+        # The client throws on a wrong JSON type here (userAudience must be an array)
         "userAudience": [],
         "nextBigTanksCosts": -1,
         "currentBigTankProgression": -1,

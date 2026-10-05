@@ -21,7 +21,6 @@ def valid_user(user_id: str) -> bool:
 
 
 def app_user_id(user_id: str) -> int:
-    """Stable numeric id for the client's app_user_id fields."""
     return zlib.crc32(user_id.encode()) % 1_000_000_000 + 1
 
 
@@ -68,8 +67,7 @@ def new_player(user_id: str) -> dict:
         "pearls": 50,
         "xp": 1,
         "foods": dict(STARTING_FOOD),
-        # flashAppUserMetaData, written by the client through comm/set_key.php.
-        # "ts" is the tutorial step; its "Get My Fish" step needs the original store, so skip it.
+        # "ts" is the tutorial step: its "Get My Fish" step needs the original store
         "meta": {"ts": "tutorialComplete"},
         "next_tank_item_id": 2,
         "tanks": [
@@ -98,7 +96,6 @@ class PlayerStore:
         return self.directory / f"{user_id}.json"
 
     def load(self, user_id: str) -> dict:
-        """Return the player's save, creating it on first visit."""
         path = self._path(user_id)
         with _lock:
             if path.exists():
@@ -113,4 +110,4 @@ class PlayerStore:
         tmp = path.with_suffix(".json.tmp")
         with _lock:
             tmp.write_text(json.dumps(player, indent=2), encoding="utf-8")
-            os.replace(tmp, path)  # atomic: never leaves a half-written save
+            os.replace(tmp, path)

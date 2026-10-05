@@ -1,17 +1,9 @@
-"""Game catalogue sent in get_init_data.
-
-Items come from the original 2010 CrowdStar catalogue; tanks, gravel and wallpapers are
-stubs (none were archived). Field names follow the parseFromJSON methods of the
-decompiled client (crowdstar.aquarium.data.*).
-"""
 import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from ..config import Config
 
-# Feature flags read through Game.getPlatformProperty(); a missing key crashes the
-# client (#1069), so every key is listed. Features without server support are off.
 PLATFORM = {
     "achievementsActive": False,
     "activeFBCred": False,
@@ -51,28 +43,27 @@ PLATFORM = {
     "zapayaAdsEnabled": False,
 }
 
-STORE_TYPE_ITEM = 0  # StoreItem.TYPE_ITEM
+STORE_TYPE_ITEM = 0
+STORE_TYPE_FOOD = 22
 
-# Food type ids hardcoded in the client (UI_Main.feedRegular / feedSuper)
+# Hardcoded in the client (UI_Main.feedRegular / feedSuper)
 FOOD_REGULAR = 1
 FOOD_SUPER = 7
 FOOD_TYPES = {
     FOOD_REGULAR: {"foodTypeId": FOOD_REGULAR, "title": "Fish Food", "description": "", "artUrl": ""},
     FOOD_SUPER: {"foodTypeId": FOOD_SUPER, "title": "Super Food", "description": "", "artUrl": ""},
 }
-# Shakes given to new players (one shake = one click with the feed cursor)
 STARTING_FOOD = {FOOD_REGULAR: 100, FOOD_SUPER: 10}
 
 CATALOGUE_FILE = Path(__file__).parent / "data" / "crowdstar_store_2010-03-05.json"
 _CATALOGUE = json.loads(CATALOGUE_FILE.read_text(encoding="utf-8"))
 
-STARTER_FISH = 6  # Clownfish
+STARTER_FISH = 6
 MALE_NAMES = _CATALOGUE["maleNames"]
 FEMALE_NAMES = _CATALOGUE["femaleNames"]
 
 
 def art_path(url):
-    """'http://cdnaquarium.crowdstar.com/swf/fish/X.swf?v=12' -> 'swf/fish/X.swf'"""
     return urlsplit(url).path.lstrip("/") if url else ""
 
 
@@ -81,7 +72,6 @@ def has_art(path):
 
 
 def convert_item(raw):
-    """2010 catalogue row -> Item.parseFromJSON row (art paths relative to the CDN root)."""
     art = art_path(raw["artUrl"])
     baby = art_path(raw.get("babyArtUrl"))
     item_id = int(raw["itemId"])
@@ -98,14 +88,14 @@ def convert_item(raw):
         "alt_scale_factor": float(raw["scaleFactor"]),
         "base_speed": int(raw["baseSpeed"]),
         "coin_cost": int(raw["coinCost"]),
-        "action_point_cost": int(raw["actionPointCost"]),  # pearls
+        "action_point_cost": int(raw["actionPointCost"]),
         "cost_mate_action_points": 0,
         "population_required": int(raw["populationRequired"]),
         "level_required": int(raw["levelRequired"]),
         "pollution_caused": int(raw["pollutionCaused"]),
-        "food_required": int(raw["foodRequired"]),  # flakes to go from starving to full
-        "food_frequency": int(raw["foodFrequency"]),  # seconds from full to starving
-        "growth_rate": int(raw["growthRate"]),  # seconds to grow up
+        "food_required": int(raw["foodRequired"]),
+        "food_frequency": int(raw["foodFrequency"]),
+        "growth_rate": int(raw["growthRate"]),
         "feed_image": raw.get("feedImage", ""),
         "movement_type": int(raw["movementType"]),
         "abilities": int(raw["abilities"]),
@@ -125,16 +115,44 @@ def convert_item(raw):
 ALL_ITEMS = {row["item_id"]: row for row in map(convert_item, _CATALOGUE["items"].values())}
 ITEMS = {item_id: row for item_id, row in ALL_ITEMS.items() if has_art(row["art_url"])}
 STORE_ROWS = {int(row["storeItemId"]): row for row in _CATALOGUE["storeItems"] if int(row["itemId"]) in ITEMS}
-# store_item_id -> item_id
 STORE = {store_id: int(row["itemId"]) for store_id, row in STORE_ROWS.items()}
 
-# NewStore.filterItems() forces the item titled exactly "Clownfish" into slot 1 of the fish
-# tab (itemList[1] = clownFish). With a single fish on sale, slot 0 becomes null and the
-# store crashes while sorting. Until more fish art is recovered, dodge the exact match.
+# NewStore.filterItems() forces the item titled exactly "Clownfish" into slot 1 of the fish tab;
+# with a single fish on sale slot 0 stays null and the store crashes while sorting.
 if sum(1 for item_id in STORE.values() if ITEMS[item_id]["item_type"] == 1) < 2:
     for item in ITEMS.values():
         if item["title"] == "Clownfish":
             item["title"] += " "
+
+
+FOOD_ITEM_TYPES = {1: FOOD_REGULAR, 2: FOOD_SUPER}
+FOOD_STORE_ID_OFFSET = 10000
+
+
+def convert_store_food(raw):
+    amount = int(raw["amount"])
+    return {
+        "food_item_id": int(raw["storeFoodId"]),
+        "item_type": 1,
+        "coin_cost": int(raw["coinCost"]),
+        "action_point_cost": int(raw["actionPointCost"]),
+        "food_amount": amount,
+        "icon_frame": 1,
+        "level_required": 1,
+        "title": f"{amount} Fish Food",
+        "description": "Shakes of food for all fish.",
+        "feed_image": "",
+        "flags": 0,
+        "active": 1,
+        "related_item_id": 0,
+    }
+
+
+FOOD_ITEMS = {
+    int(raw["storeFoodId"]): convert_store_food(raw)
+    for raw in _CATALOGUE["storeFoods"] if int(raw["foodTypeId"]) == FOOD_REGULAR
+}
+FOOD_STORE = {FOOD_STORE_ID_OFFSET + food_id: food_id for food_id in FOOD_ITEMS}
 
 
 TANKS = {
@@ -195,7 +213,6 @@ WALLPAPERS = {
 
 
 def absolute(row, cdn, *keys):
-    """Copy of `row` with the given relative art paths prefixed by the CDN URL."""
     row = dict(row)
     for key in keys:
         if row.get(key):
@@ -211,36 +228,46 @@ def tanks(cdn):
     return {str(i): absolute(row, cdn, "art_url", "dirt_art_url") for i, row in TANKS.items()}
 
 
+def food_items():
+    return {str(i): row for i, row in FOOD_ITEMS.items()}
+
+
 def store_items():
-    """StoreItem rows (StoreItem.parseFromJSON) for everything in STORE."""
     rows = {}
     for store_id, item_id in STORE.items():
         raw = STORE_ROWS[store_id]
-        rows[str(store_id)] = {
-            "store_item_id": store_id,
-            "id": item_id,
-            "item_id": item_id,
-            "item_type": STORE_TYPE_ITEM,
-            "sex": int(raw["sex"]),
-            "age": int(raw["age"]),
-            "status": int(raw["status"]),
-            "animated": int(raw["animated"]),
-            "flags": 0,
-            "category_priority": ITEMS[item_id]["level_required"],
-            "special_priority": 0,
-            "cost_override": int(raw["costOverride"]),
-            "cost_override_coins": int(raw["costOverrideCoins"]),
-            "cost_override_action_points": int(raw["costOverrideActionPoints"]),
-            "is_on_sale": 0,
-            "is_new": 0,
-            "date_end": 0,
-            "sale_date_start": 0,
-            "sale_date_end": 0,
-            "date_created": 0,
-            "bulk_quantity": 1,
-            "lock_type": 0,
-            "lock_value": 0,
-            "offset_x": 0,
-            "offset_y": 0,
-        }
+        rows[str(store_id)] = store_row(store_id, item_id, STORE_TYPE_ITEM, ITEMS[item_id]["level_required"], raw)
+    for store_id, food_id in FOOD_STORE.items():
+        rows[str(store_id)] = store_row(store_id, food_id, STORE_TYPE_FOOD, food_id)
     return rows
+
+
+def store_row(store_id, table_id, store_type, priority, raw=None):
+    raw = raw or {}
+    return {
+        "store_item_id": store_id,
+        "id": table_id,
+        "item_id": table_id,
+        "item_type": store_type,
+        "sex": int(raw.get("sex", 0)),
+        "age": int(raw.get("age", 0)),
+        "status": int(raw.get("status", 0)),
+        "animated": int(raw.get("animated", 0)),
+        "flags": 0,
+        "category_priority": priority,
+        "special_priority": 0,
+        "cost_override": int(raw.get("costOverride", 0)),
+        "cost_override_coins": int(raw.get("costOverrideCoins", 0)),
+        "cost_override_action_points": int(raw.get("costOverrideActionPoints", 0)),
+        "is_on_sale": 0,
+        "is_new": 0,
+        "date_end": 0,
+        "sale_date_start": 0,
+        "sale_date_end": 0,
+        "date_created": 0,
+        "bulk_quantity": 1,
+        "lock_type": 0,
+        "lock_value": 0,
+        "offset_x": 0,
+        "offset_y": 0,
+    }

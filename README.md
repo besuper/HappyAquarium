@@ -18,7 +18,8 @@ played again in a browser, through [Ruffle](https://ruffle.rs/).
 - [x] Store and purchasing (only items whose art survived: currently the Clownfish)
 - [x] Fish swim and animate in the tank
 - [x] Feeding
-- [ ] Buying food, cleaning, coin collection, selling, breeding, fish growth persistence
+- [x] Buying food in the store's Feed tab
+- [ ] Super food in the store (no original price), cleaning, coin collection, selling, breeding, fish growth persistence
 - [ ] UI text (`lang/en.xml` is lost: some labels show raw `TXT_*` keys)
 - [ ] Real tanks, gravels, wallpapers, decorations and most fish (lost, see [wanted list](docs/ASSET_FORMATS.md#wanted))
 - [ ] Sound effects and music (lost; served as silence)
@@ -102,11 +103,10 @@ happy-aquarium-server/
 │   ├── config.py           settings (environment variables)
 │   ├── storage.py          JSON player saves
 │   ├── swf.py              on-the-fly fixes to the original client
+│   ├── actions/            one file per comm/<action>.php call
 │   ├── game/
 │   │   ├── catalog.py      items, tanks, gravel, store, feature flags
-│   │   ├── data/           original 2010 CrowdStar catalogue (populate_store.php)
-│   │   ├── init_data.py    get_init_data reply
-│   │   └── actions.py      other API calls (purchase, set_key...)
+│   │   └── data/           original 2010 CrowdStar catalogue (populate_store.php)
 │   └── templates/play.html page embedding the client with Ruffle
 ├── assets/                 the game CDN (original files + generated stubs)
 ├── tools/
@@ -126,8 +126,22 @@ and that is still missing (373 of 374), with its exact path. Drop a recovered fi
 See also the [wanted list](docs/ASSET_FORMATS.md#wanted).
 
 Code contributions are welcome too: the easiest way to find the next missing feature is to
-play, watch the server log for `unhandled comm call`, and implement it in
-`happyaquarium/game/actions.py`.
+play, watch the server log for `unhandled comm call`, and add a file for it in
+`happyaquarium/actions/`:
+
+```python
+from . import action
+from ._common import OK
+
+
+@action("clean_tank")
+def clean_tank(ctx):
+    ctx.player["coins"] += 10   # ctx.player is saved after the call
+    return OK
+```
+
+Modules in that folder are picked up automatically. `ctx` carries the player's save,
+the POST parameters and the CDN URL; pass `saves=False` for read-only calls.
 
 ## Credits
 
