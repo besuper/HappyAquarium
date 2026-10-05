@@ -1,7 +1,7 @@
 import time
 
 from . import action
-from ..game import catalog, pollution
+from ..game import catalog, pollution, treasure
 from ..storage import app_user_id
 
 def current_hunger(tank_item, now):
@@ -14,8 +14,15 @@ def current_hunger(tank_item, now):
     return min(100, tank_item["hunger"] + elapsed * 100 // frequency)
 
 
-def tank_items(tank, now):
-    return [{**row, "hunger": current_hunger(row, now), "last_hunger_update": now} for row in tank["items"]]
+def tank_item(row, now, config):
+    row = {**row, "hunger": current_hunger(row, now), "last_hunger_update": now}
+    if treasure.is_chest(row):
+        row["hasCoins"] = int(treasure.has_coins(row, now, config))
+    return row
+
+
+def tank_items(tank, now, config):
+    return [tank_item(row, now, config) for row in tank["items"]]
 
 
 def user_tank(player, tank, app_id, now, config):
@@ -33,7 +40,7 @@ def user_tank(player, tank, app_id, now, config):
         "toxic_fish_count": 0,
         "toxic_fish_active": 0,
         "level_required": 1,
-        "tank_items": tank_items(tank, now),
+        "tank_items": tank_items(tank, now, config),
         "gravel_frame": 1,
         "gravel_id": tank["gravel_id"],
         "likes": 0,
@@ -93,7 +100,7 @@ def get_init_data(ctx):
         "storeFoods": {},
         "foodTypes": {str(k): v for k, v in catalog.FOOD_TYPES.items()},
         "food_items": catalog.food_items(),
-        "generic_items": {},
+        "generic_items": catalog.generic_items(),
         "owner": user,
         "player": user,
         "flashAppUserMetaData": ctx.player["meta"],

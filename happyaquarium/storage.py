@@ -6,6 +6,8 @@ import time
 import zlib
 from pathlib import Path
 
+from .game.catalog import SLOT_INBOX, TANK_ID_STORAGE
+
 SAVE_VERSION = 1
 USER_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
@@ -66,7 +68,7 @@ def new_player(user_id: str, config: dict) -> dict:
         "foods": dict(start["food"]),
         # "ts" is the tutorial step: its "Get My Fish" step needs the original store
         "meta": {"ts": "tutorialComplete"},
-        "next_tank_item_id": 2,
+        "next_tank_item_id": 3,
         "tanks": [
             {
                 "user_tank_id": 1,
@@ -78,8 +80,22 @@ def new_player(user_id: str, config: dict) -> dict:
                 "lighting_id": 0,
                 "pollution": 0,
                 "last_pollution_update": int(time.time()),
-                "items": [new_tank_item(1, start["starter_fish"], start["starter_fish_name"], config["fish"]["hunger_when_bought"])],
-            }
+                "items": [
+                    new_tank_item(1, start["starter_fish"], start["starter_fish_name"], config["fish"]["hunger_when_bought"]),
+                    {**new_tank_item(2, start["starter_chest"], "Treasure Chest", 0, x=600, y=430), "last_coin_collect": 0},
+                ],
+            },
+            {
+                "user_tank_id": 2,
+                "tank_id": TANK_ID_STORAGE,
+                "slot": SLOT_INBOX,
+                "title": "Inbox",
+                "gravel_id": 1,
+                "tank_bg_id": 0,
+                "lighting_id": 0,
+                "pollution": 0,
+                "items": [],
+            },
         ],
     }
 

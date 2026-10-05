@@ -170,6 +170,24 @@ def linked_sprite(char_id, class_name, *children):
     return sprite(char_id, *children) + abc + symbol
 
 
+def frame_label(name):
+    return tag(43, name.encode() + bytes(1))
+
+
+def remove(depth):
+    return tag(28, struct.pack("<H", depth))
+
+
+def labelled_sprite(char_id, frames):
+    """Multi-frame DefineSprite: frames is a list of (label, shape_id) shown one per frame."""
+    inner = b""
+    for i, (label, shape_id) in enumerate(frames):
+        if i:
+            inner += remove(1)
+        inner += frame_label(label) + place(1, shape_id) + tag(1)
+    return tag(39, struct.pack("<HH", char_id, len(frames)) + inner + tag(0))
+
+
 def swf(width, height, tags, bg=(0, 0, 0)):
     body = rect(0, width * TWIP, 0, height * TWIP) + struct.pack("<HH", 24 << 8, 1)
     body += tag(69, struct.pack("<I", 0x08))  # FileAttributes: ActionScript 3
@@ -214,6 +232,24 @@ def decor_stub(w, h, rgb, class_name):
     ])
 
 
+def chest_stub(w, h):
+    # ChestSprite loops between start_<state> and stop_<state> frame labels
+    full, empty, dirty = 1, 2, 3
+    frames = []
+    for state, shape in (("full", full), ("empty", empty), ("win", full), ("dirty", dirty)):
+        frames += [(f"start_{state}", shape), (f"stop_{state}", shape)]
+    sprite_id = 4
+    abc = tag(82, struct.pack("<I", 1) + bytes(1) + movieclip_subclass_abc("StubChest"))
+    symbol = tag(76, struct.pack("<HH", 1, sprite_id) + b"StubChest" + bytes(1))
+    return swf(w, h, [
+        define_shape_rect(full, -w // 2, -h, w, h, (0xf2, 0xc2, 0x2e)),
+        define_shape_rect(empty, -w // 2, -h, w, h, (0x8a, 0x5a, 0x2b)),
+        define_shape_rect(dirty, -w // 2, -h, w, h, (0x55, 0x55, 0x44)),
+        labelled_sprite(sprite_id, frames), abc, symbol,
+        place(1, sprite_id, "chest"),
+    ])
+
+
 def main(assets):
     tank_dir = assets / "swf" / "tank"
     prop_dir = assets / "swf" / "prop"
@@ -225,8 +261,11 @@ def main(assets):
     # Gravel.getTankScaledGravelUrl appends a size suffix to art_url
     for suffix in ("50", "100", "150", "Small", "Medium", "Large"):
         (tank_dir / f"Gravel_Stub{suffix}.swf").write_bytes(gravel_stub(w, 80, f"StubGravel{suffix}"))
+    chest_dir = assets / "swf" / "chest"
+    chest_dir.mkdir(parents=True, exist_ok=True)
+    (chest_dir / "Chest_Stub.swf").write_bytes(chest_stub(60, 45))
     (prop_dir / "Prop_Gift.swf").write_bytes(decor_stub(40, 40, (0xe0, 0x30, 0x40), "StubGift"))
-    print(f"stubs written to {tank_dir} and {prop_dir}")
+    print(f"stubs written to {assets / 'swf'}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
+import time
+
 from . import action
 from ._common import ERR_NOT_ENOUGH_MONEY, ERR_UNKNOWN_ITEM, find_tank, pay
-from ..game import catalog
+from ..game import catalog, treasure
 from ..storage import new_tank_item
 
 
@@ -33,11 +35,22 @@ def buy_food(ctx, food, quantity):
             "coins": player["coins"], "pearls": player["pearls"]}
 
 
+def replay_daily_treasure(ctx):
+    pearls = ctx.config["daily_treasure"]["replay_pearls"]
+    if not pay(ctx.player, 0, pearls):
+        return {"error": ERR_NOT_ENOUGH_MONEY}
+    coins = treasure.payout(ctx.player["tanks"][0], int(time.time()), ctx.config)
+    ctx.player["coins"] += coins
+    return {"error": 0, "coin_payout": coins, "coins": ctx.player["coins"], "pearls": ctx.player["pearls"]}
+
+
 @action("purchase")
 def purchase(ctx):
     store_id = int(ctx.params.get("store_item_id", -1))
     quantity = max(1, int(ctx.params.get("quantity", 1)))
-    if store_id in catalog.FOOD_STORE:
+    if store_id == catalog.DAILY_TREASURE_STORE_ID:
+        reply = replay_daily_treasure(ctx)
+    elif store_id in catalog.FOOD_STORE:
         reply = buy_food(ctx, catalog.FOOD_ITEMS[catalog.FOOD_STORE[store_id]], quantity)
     elif store_id in catalog.STORE:
         reply = buy_item(ctx, catalog.STORE[store_id], quantity)

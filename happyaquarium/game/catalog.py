@@ -45,6 +45,11 @@ PLATFORM = {
 
 STORE_TYPE_ITEM = 0
 STORE_TYPE_FOOD = 22
+STORE_TYPE_GENERIC = 17
+STORE_FLAG_NOT_IN_STORE = 1 << 4
+ITEM_TYPE_CHEST = 5
+TANK_ID_STORAGE = 100000
+SLOT_INBOX = 1000000
 
 # Hardcoded in the client (UI_Main.feedRegular / feedSuper)
 FOOD_REGULAR = 1
@@ -111,8 +116,19 @@ def convert_item(raw):
 
 
 ALL_ITEMS = {row["item_id"]: row for row in map(convert_item, _CATALOGUE["items"].values())}
-ITEMS = {item_id: row for item_id, row in ALL_ITEMS.items() if has_art(row["art_url"])}
-STORE_ROWS = {int(row["storeItemId"]): row for row in _CATALOGUE["storeItems"] if int(row["itemId"]) in ITEMS}
+RECOVERED = {item_id for item_id, row in ALL_ITEMS.items() if has_art(row["art_url"])}
+
+
+def with_placeholder(row, art):
+    return {**row, "art_url": art, "baby_art_url": art}
+
+
+# Items the game cannot work without (the daily chest) get stub art; they are not sold.
+PLACEHOLDERS = {int(k): v for k, v in CONFIG["placeholder_art"].items()}
+ITEMS = {item_id: ALL_ITEMS[item_id] for item_id in RECOVERED}
+ITEMS.update({item_id: with_placeholder(ALL_ITEMS[item_id], art)
+              for item_id, art in PLACEHOLDERS.items() if item_id not in RECOVERED})
+STORE_ROWS = {int(row["storeItemId"]): row for row in _CATALOGUE["storeItems"] if int(row["itemId"]) in RECOVERED}
 STORE = {store_id: int(row["itemId"]) for store_id, row in STORE_ROWS.items()}
 
 # NewStore.filterItems() forces the item titled exactly "Clownfish" into slot 1 of the fish tab;
@@ -153,6 +169,30 @@ FOOD_ITEMS = {
 FOOD_STORE = {FOOD_STORE_ID_OFFSET + food_id: food_id for food_id in FOOD_ITEMS}
 
 
+# DailyTreasure needs a daily-treasure GenericItem and its store row for the "play again" button
+DAILY_TREASURE_ID = 1
+DAILY_TREASURE_STORE_ID = 20000
+
+
+def generic_items():
+    return {str(DAILY_TREASURE_ID): {
+        "generic_item_id": DAILY_TREASURE_ID,
+        "item_type": 4,
+        "coin_cost": 0,
+        "action_point_cost": CONFIG["daily_treasure"]["replay_pearls"],
+        "art_url": "",
+        "level_required": 1,
+        "title": "Daily Treasure",
+        "description": "",
+        "feed_image": "",
+        "flags": 0,
+        "meta_info": "",
+        "start_time": 0,
+        "end_time": 0,
+        "active": 1,
+    }}
+
+
 TANKS = {
     1: {
         "tank_id": 1,
@@ -175,6 +215,11 @@ TANKS = {
         "height": 520,
     }
 }
+
+# The inbox (gifts, inventory) is a UserTank in slot 1000000 using a storage tank; the
+# client never loads art for tank ids >= 100000.
+TANKS[TANK_ID_STORAGE] = {**TANKS[1], "tank_id": TANK_ID_STORAGE, "title": "Inbox", "description": "",
+                          "art_url": "", "dirt_art_url": "", "population_limit": 1000}
 
 GRAVEL = {
     1: {
@@ -237,10 +282,15 @@ def store_items():
         rows[str(store_id)] = store_row(store_id, item_id, STORE_TYPE_ITEM, ITEMS[item_id]["level_required"], raw)
     for store_id, food_id in FOOD_STORE.items():
         rows[str(store_id)] = store_row(store_id, food_id, STORE_TYPE_FOOD, food_id)
+    # DailyTreasure looks its store row up by GenericItem.genericItemId, which is 17 * 100000 + id
+    rows[str(DAILY_TREASURE_STORE_ID)] = {
+        **store_row(DAILY_TREASURE_STORE_ID, DAILY_TREASURE_ID, STORE_TYPE_GENERIC, 0, flags=STORE_FLAG_NOT_IN_STORE),
+        "item_id": STORE_TYPE_GENERIC * 100000 + DAILY_TREASURE_ID,
+    }
     return rows
 
 
-def store_row(store_id, table_id, store_type, priority, raw=None):
+def store_row(store_id, table_id, store_type, priority, raw=None, flags=0):
     raw = raw or {}
     return {
         "store_item_id": store_id,
@@ -251,7 +301,7 @@ def store_row(store_id, table_id, store_type, priority, raw=None):
         "age": int(raw.get("age", 0)),
         "status": int(raw.get("status", 0)),
         "animated": int(raw.get("animated", 0)),
-        "flags": 0,
+        "flags": flags,
         "category_priority": priority,
         "special_priority": 0,
         "cost_override": int(raw.get("costOverride", 0)),

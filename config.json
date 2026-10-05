@@ -16,7 +16,8 @@
     },
     "tank_title": "My Aquarium",
     "starter_fish": 6,
-    "starter_fish_name": "Nemo"
+    "starter_fish_name": "Nemo",
+    "starter_chest": 23
   },
   "fish": {
     "hunger_when_bought": 50
@@ -27,5 +28,14 @@
   "pollution": {
     "seconds_to_max_dirty": 172800
   },
-  "subscription_days": 3650
+  "subscription_days": 3650,
+  "daily_treasure": {
+    "min_coins": 10,
+    "max_coins": 100,
+    "replay_pearls": 5,
+    "reset_utc_hour": 8
+  },
+  "placeholder_art": {
+    "23": "swf/chest/Chest_Stub.swf"
+  }
 }
