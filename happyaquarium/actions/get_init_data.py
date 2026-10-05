@@ -1,7 +1,7 @@
 import time
 
 from . import action
-from ..game import catalog
+from ..game import catalog, pollution
 from ..storage import app_user_id
 
 TEN_YEARS = 10 * 365 * 86400
@@ -29,7 +29,7 @@ def user_tank(player, tank, app_id, now):
         "is_loaded": 1,
         "title": tank["title"],
         "description": "",
-        "current_pollution": tank["pollution"],
+        "current_pollution": pollution.current(tank, now),
         "tank_bg_id": tank["tank_bg_id"],
         "purchased_lighting": [],
         "slot": tank["slot"],

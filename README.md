@@ -19,7 +19,8 @@ played again in a browser, through [Ruffle](https://ruffle.rs/).
 - [x] Fish swim and animate in the tank
 - [x] Feeding
 - [x] Buying food in the store's Feed tab
-- [ ] Super food in the store (no original price), cleaning, coin collection, selling, breeding, fish growth persistence
+- [x] Cleaning the tank
+- [ ] Super food in the store (no original price), coin collection, selling, breeding, fish growth persistence
 - [ ] UI text (`lang/en.xml` is lost: some labels show raw `TXT_*` keys)
 - [ ] Real tanks, gravels, wallpapers, decorations and most fish (lost, see [wanted list](docs/ASSET_FORMATS.md#wanted))
 - [ ] Sound effects and music (lost; served as silence)
@@ -106,6 +107,8 @@ happy-aquarium-server/
 │   ├── actions/            one file per comm/<action>.php call
 │   ├── game/
 │   │   ├── catalog.py      items, tanks, gravel, store, feature flags
+│   │   ├── levels.py       XP chart (same formula as the client)
+│   │   ├── pollution.py    dirt build-up over time
 │   │   └── data/           original 2010 CrowdStar catalogue (populate_store.php)
 │   └── templates/play.html page embedding the client with Ruffle
 ├── assets/                 the game CDN (original files + generated stubs)

@@ -80,6 +80,7 @@ def new_player(user_id: str) -> dict:
                 "tank_bg_id": 0,
                 "lighting_id": 0,
                 "pollution": 0,
+                "last_pollution_update": int(time.time()),
                 "items": [new_tank_item(1, STARTER_FISH, "Nemo")],
             }
         ],
