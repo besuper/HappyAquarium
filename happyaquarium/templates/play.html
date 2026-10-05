@@ -26,12 +26,6 @@
             opacity: .6;
         }
     </style>
-    <script src="{{ ruffle_url }}"></script>
-</head>
-
-<body>
-    <div id="game"></div>
-    <footer>Happy Aquarium preservation server &middot; playing as <b>{{ user }}</b></footer>
     <script>
         {% if flash_log %}
         (() => {
@@ -46,19 +40,27 @@
         })();
         {% endif %}
         window.RufflePlayer = window.RufflePlayer || {};
-        window.RufflePlayer.config = { autoplay: "on", unmuteOverlay: "hidden", allowScriptAccess: true, logLevel: "info" };
-        window.addEventListener("load", () => {
-            const player = window.RufflePlayer.newest().createPlayer();
-            player.style.width = "760px";
-            player.style.height = "660px";
-            document.getElementById("game").appendChild(player);
-            player.ruffle().load({
-                url: "{{ flashvars.cdn_url }}preloader.swf",
-                parameters: {{ flashvars | tojson }},
+        window.RufflePlayer.config = {
+            polyfills: true,
+            favorFlash: true,
+            autoplay: "on",
+            unmuteOverlay: "hidden",
             allowScriptAccess: true,
-      });
-    });
+            logLevel: "info",
+        };
     </script>
+    <script src="{{ ruffle_url }}"></script>
+</head>
+
+<body>
+    <object id="game" type="application/x-shockwave-flash" data="{{ preloader }}" width="760" height="660">
+        <param name="movie" value="{{ preloader }}">
+        <param name="flashvars" value="{{ flashvars }}">
+        <param name="allowScriptAccess" value="always">
+    </object>
+    <footer>
+        Happy Aquarium preservation server &middot; playing as <b>{{ user }}</b>
+    </footer>
 </body>
 
 </html>

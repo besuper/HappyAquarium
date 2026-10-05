@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from urllib.parse import urlencode
 
 from flask import Flask, Response, abort, render_template, request, send_from_directory
 
@@ -67,8 +68,8 @@ def create_app(config=CONFIG):
             "signed_request": "",
             "user_prefs": "0",
         }
-        return render_template("play.html", flashvars=flashvars, ruffle_url=server["ruffle_url"],
-                               flash_log=server["flash_log"], user=user)
+        return render_template("play.html", flashvars=urlencode(flashvars), preloader=cdn_url() + "preloader.swf",
+                               ruffle_url=server["ruffle_url"], flash_log=server["flash_log"], user=user)
 
     @app.get("/assets/<path:path>")
     @app.get("/swf/<path:path>", defaults={"prefix": "swf/"})

@@ -139,26 +139,40 @@ def movieclip_subclass_abc(class_name):
     The client instantiates art via `child.constructor`; without a linked class that is a
     bare MovieClip with no graphics (and a 0x0 BitmapData crash), so stubs need real classes.
     """
-    strings = ["", class_name, "flash.display", "MovieClip"]  # indices 1..4
-    pool = u30(1) + u30(1) + u30(1)  # no ints / uints / doubles
+    # Mirrors mxmlc's output: the native player hangs on a class whose script init does not push
+    # the superclass chain as scopes, or whose methods declare inconsistent scope depths
+    strings = ["", class_name, "flash.display", "MovieClip", "Object", "flash.events", "EventDispatcher",
+               "DisplayObject", "InteractiveObject", "DisplayObjectContainer", "Sprite"]  # indices 1..11
+    pool = u30(0) + u30(0) + u30(0)  # no ints / uints / doubles
     pool += u30(len(strings) + 1) + b"".join(abc_string(x) for x in strings)
-    pool += u30(3) + bytes([0x16]) + u30(1) + bytes([0x16]) + u30(3)  # ns1: "", ns2: flash.display
-    pool += u30(1)  # no ns sets
-    pool += u30(3) + bytes([0x07]) + u30(1) + u30(2) + bytes([0x07]) + u30(2) + u30(4)  # mn1: Foo, mn2: MovieClip
+    namespaces = [(0x16, 1), (0x16, 3), (0x18, 2), (0x16, 6)]  # "", flash.display, protected Foo, flash.events
+    pool += u30(len(namespaces) + 1) + b"".join(bytes([kind]) + u30(name) for kind, name in namespaces)
+    pool += u30(0)  # no ns sets
+    # mn1 Foo, mn2 MovieClip, then Object .. Sprite for the scope chain
+    multinames = [(1, 2), (2, 4), (1, 5), (4, 7), (2, 8), (2, 9), (2, 10), (2, 11)]
+    pool += u30(len(multinames) + 1) + b"".join(bytes([0x07]) + u30(ns) + u30(name) for ns, name in multinames)
     methods = u30(3) + b"".join(u30(0) + u30(0) + u30(0) + bytes([0]) for _ in range(3))
     metadata = u30(0)
-    instance = u30(1) + u30(2) + bytes([0x00]) + u30(0) + u30(1) + u30(0)  # name, super, dynamic, iinit=m1
+    # name, super, protectedNs, protectedNs, no interfaces, iinit=m1, no traits.
+    # Not sealed (unlike mxmlc): the client reads optional children like chest.signText_mc
+    instance = u30(1) + u30(2) + bytes([0x08]) + u30(3) + u30(0) + u30(1) + u30(0)
     classes = u30(1) + instance + u30(2) + u30(0)  # cinit = m2
     scripts = u30(1) + u30(0) + u30(1) + u30(1) + bytes([0x04]) + u30(1) + u30(0)  # init=m0, trait Class slot1
 
-    def body(method, code, max_stack):
-        return (u30(method) + u30(max_stack) + u30(1) + u30(0) + u30(1)
+    def body(method, code, max_stack, init_scope, max_scope):
+        return (u30(method) + u30(max_stack) + u30(1) + u30(init_scope) + u30(max_scope)
                 + u30(len(code)) + code + u30(0) + u30(0))
 
-    script_init = bytes([0xD0, 0x30, 0xD0, 0x60]) + u30(2) + bytes([0x58]) + u30(0) + bytes([0x68]) + u30(1) + bytes([0x47])
+    chain = [3, 4, 5, 6, 7, 8, 2]  # Object, EventDispatcher, ..., Sprite, MovieClip
+    script_init = bytes([0xD0, 0x30, 0x65]) + u30(0)
+    script_init += b"".join(bytes([0x60]) + u30(mn) + bytes([0x30]) for mn in chain)
+    script_init += bytes([0x60]) + u30(2) + bytes([0x58]) + u30(0) + bytes([0x1D]) * len(chain)
+    script_init += bytes([0x68]) + u30(1) + bytes([0x47])
     iinit = bytes([0xD0, 0x30, 0xD0, 0x49]) + u30(0) + bytes([0x47])
     cinit = bytes([0xD0, 0x30, 0x47])
-    bodies = u30(3) + body(0, script_init, 2) + body(1, iinit, 1) + body(2, cinit, 1)
+    depth = 1 + len(chain)
+    bodies = (u30(3) + body(0, script_init, 2, 1, depth + 1) + body(1, iinit, 1, depth + 2, depth + 3)
+              + body(2, cinit, 1, depth + 1, depth + 2))
     return struct.pack("<HH", 16, 46) + pool + methods + metadata + classes + scripts + bodies
 
 

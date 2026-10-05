@@ -8,7 +8,7 @@ def current_hunger(tank_item, now):
     # Hunger is inverted: 0 = full, 100 = starving. Crawlers have food_frequency 0 and never get hungry.
     item = catalog.ITEMS.get(tank_item["itemId"])
     frequency = item["food_frequency"] if item else 0
-    
+
     if frequency <= 0:
         return tank_item["hunger"]
 
@@ -28,7 +28,7 @@ def tank_item(row, now, config):
 
 
 def tank_items(tank, now, config):
-    return [tank_item(row, now, config) for row in tank["items"]]
+    return [tank_item(row, now, config) for row in tank["items"] if row["itemId"] in catalog.ITEMS]
 
 
 def user_tank(player, tank, app_id, now, config):
