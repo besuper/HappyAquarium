@@ -6,7 +6,8 @@ import time
 import zlib
 from pathlib import Path
 
-from .game.catalog import SLOT_INBOX, TANK_ID_STORAGE
+from .game.catalog import ALL_ITEMS, SLOT_INBOX, TANK_ID_STORAGE
+from .game.growth import ADULT
 
 SAVE_VERSION = 1
 USER_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
@@ -81,7 +82,8 @@ def new_player(user_id: str, config: dict) -> dict:
                 "pollution": 0,
                 "last_pollution_update": int(time.time()),
                 "items": [
-                    new_tank_item(1, start["starter_fish"], start["starter_fish_name"], config["fish"]["hunger_when_bought"]),
+                    new_tank_item(1, start["starter_fish"], start["starter_fish_name"], config["fish"]["hunger_when_bought"],
+                                  age=ALL_ITEMS[start["starter_fish"]]["growth_rate"] * ADULT),
                     {**new_tank_item(2, start["starter_chest"], "Treasure Chest", 0, x=600, y=430), "last_coin_collect": 0},
                 ],
             },

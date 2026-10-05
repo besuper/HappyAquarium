@@ -1,23 +1,29 @@
 import time
 
 from . import action
-from ..game import catalog, pollution, treasure
+from ..game import catalog, growth, pollution, treasure
 from ..storage import app_user_id
 
 def current_hunger(tank_item, now):
     # Hunger is inverted: 0 = full, 100 = starving. Crawlers have food_frequency 0 and never get hungry.
     item = catalog.ITEMS.get(tank_item["itemId"])
     frequency = item["food_frequency"] if item else 0
+    
     if frequency <= 0:
         return tank_item["hunger"]
+
     elapsed = max(0, now - tank_item.get("last_hunger_update", now))
+
     return min(100, tank_item["hunger"] + elapsed * 100 // frequency)
 
 
 def tank_item(row, now, config):
-    row = {**row, "hunger": current_hunger(row, now), "last_hunger_update": now}
+    row = {**row, "hunger": current_hunger(row, now), "last_hunger_update": now,
+           "age": growth.current_age(row, now), "last_age_update": now}
+
     if treasure.is_chest(row):
         row["hasCoins"] = int(treasure.has_coins(row, now, config))
+
     return row
 
 
