@@ -84,15 +84,9 @@ Saves live in `data/players/<user>.json`. Delete a file to start that player ove
 
 ## Configuration
 
-Environment variables:
-
-| Variable | Default | |
-|---|---|---|
-| `HA_ASSETS_DIR` | `assets/` | folder served as the game CDN |
-| `HA_PLAYERS_DIR` | `data/players/` | player saves |
-| `HA_DEFAULT_USER` | `player` | player used when the URL has no `?user=` |
-| `HA_RUFFLE_URL` | `https://unpkg.com/@ruffle-rs/ruffle` | Ruffle build (point it to a local copy to play offline) |
-| `HA_FLASH_LOG` | `1` | relay the client's `trace()` output and ActionScript errors to the server log |
+All settings live in [`config.json`](config.json).
+Restart the server after editing it.
+Actions read the configuration through `ctx.config`.
 
 ## Project layout
 
@@ -101,7 +95,7 @@ happy-aquarium-server/
 ├── happyaquarium/          Flask application
 │   ├── __init__.py         routes: play page, /assets CDN, /comm/<action>.php API
 │   ├── __main__.py         command line entry point
-│   ├── config.py           settings (environment variables)
+│   ├── config.py           loads config.json
 │   ├── storage.py          JSON player saves
 │   ├── swf.py              on-the-fly fixes to the original client
 │   ├── actions/            one file per comm/<action>.php call
@@ -111,6 +105,7 @@ happy-aquarium-server/
 │   │   ├── pollution.py    dirt build-up over time
 │   │   └── data/           original 2010 CrowdStar catalogue (populate_store.php)
 │   └── templates/play.html page embedding the client with Ruffle
+├── config.json             server settings and game balance values
 ├── assets/                 the game CDN (original files + generated stubs)
 ├── tools/
 │   ├── make_stub_swf.py    regenerates the placeholder SWFs
@@ -143,7 +138,7 @@ def clean_tank(ctx):
     return OK
 ```
 
-Modules in that folder are picked up automatically. `ctx` carries the player's save,
+Modules in that folder are picked up automatically. `ctx` carries the player's save, the configuration,
 the POST parameters and the CDN URL; pass `saves=False` for read-only calls.
 
 ## Credits

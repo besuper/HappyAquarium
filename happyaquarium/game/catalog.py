@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from ..config import Config
+from ..config import CONFIG
 
 PLATFORM = {
     "achievementsActive": False,
@@ -53,12 +53,10 @@ FOOD_TYPES = {
     FOOD_REGULAR: {"foodTypeId": FOOD_REGULAR, "title": "Fish Food", "description": "", "artUrl": ""},
     FOOD_SUPER: {"foodTypeId": FOOD_SUPER, "title": "Super Food", "description": "", "artUrl": ""},
 }
-STARTING_FOOD = {FOOD_REGULAR: 100, FOOD_SUPER: 10}
 
 CATALOGUE_FILE = Path(__file__).parent / "data" / "crowdstar_store_2010-03-05.json"
 _CATALOGUE = json.loads(CATALOGUE_FILE.read_text(encoding="utf-8"))
 
-STARTER_FISH = 6
 MALE_NAMES = _CATALOGUE["maleNames"]
 FEMALE_NAMES = _CATALOGUE["femaleNames"]
 
@@ -68,7 +66,7 @@ def art_path(url):
 
 
 def has_art(path):
-    return bool(path) and (Config.ASSETS_DIR / path).is_file()
+    return bool(path) and (CONFIG["server"]["assets_dir"] / path).is_file()
 
 
 def convert_item(raw):

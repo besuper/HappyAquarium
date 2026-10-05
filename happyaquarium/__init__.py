@@ -4,7 +4,7 @@ import re
 
 from flask import Flask, Response, abort, render_template, request, send_from_directory
 
-from .config import Config
+from .config import CONFIG
 from . import actions
 from .storage import PlayerStore, app_user_id, valid_user
 from .swf import SILENT_MP3, patched_main_swf
@@ -32,19 +32,19 @@ def json_reply(data):
     return Response(json.dumps(data, separators=(",", ":")), mimetype="application/json")
 
 
-def create_app(config=Config):
+def create_app(config=CONFIG):
     app = Flask(__name__)
-    app.config.from_object(config)
+    server = config["server"]
     app.wsgi_app = CollapseSlashes(app.wsgi_app)
-    assets_dir = app.config["ASSETS_DIR"]
-    players = PlayerStore(app.config["PLAYERS_DIR"])
+    assets_dir = server["assets_dir"]
+    players = PlayerStore(server["players_dir"], config)
 
     def cdn_url():
         return request.host_url + "assets/"
 
     @app.get("/")
     def play():
-        user = request.args.get("user", app.config["DEFAULT_USER"])
+        user = request.args.get("user", server["default_user"])
         if not valid_user(user):
             abort(400, "user must be 1-32 characters: letters, digits, _ or -")
         players.load(user)
@@ -67,8 +67,8 @@ def create_app(config=Config):
             "signed_request": "",
             "user_prefs": "0",
         }
-        return render_template("play.html", flashvars=flashvars, ruffle_url=app.config["RUFFLE_URL"],
-                               flash_log=app.config["FLASH_LOG"], user=user)
+        return render_template("play.html", flashvars=flashvars, ruffle_url=server["ruffle_url"],
+                               flash_log=server["flash_log"], user=user)
 
     @app.get("/assets/<path:path>")
     @app.get("/swf/<path:path>", defaults={"prefix": "swf/"})
@@ -102,7 +102,7 @@ def create_app(config=Config):
 
         handler, saves = entry
         player = players.load(user)
-        reply = handler(actions.Context(player, params, cdn_url()))
+        reply = handler(actions.Context(player, params, cdn_url(), config))
         if saves:
             players.save(player)
             log.info("comm %s -> error=%s", action, reply.get("error"))
@@ -110,7 +110,7 @@ def create_app(config=Config):
 
     @app.post("/debug/flash-log")
     def flash_log():
-        if app.config["FLASH_LOG"]:
+        if server["flash_log"]:
             log.info("[flash] %s", request.get_data(as_text=True).strip())
         return "", 204
 

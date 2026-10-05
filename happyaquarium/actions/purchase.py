@@ -14,6 +14,7 @@ def buy_item(ctx, item_id, quantity):
     bought = []
     for _ in range(quantity):
         row = new_tank_item(player["next_tank_item_id"], item_id, ctx.params.get("item_name") or item["title"],
+                            ctx.config["fish"]["hunger_when_bought"],
                             user_tank_id=tank["user_tank_id"], sex=int(ctx.params.get("sex", 1)), age=0)
         player["next_tank_item_id"] += 1
         tank["items"].append(row)

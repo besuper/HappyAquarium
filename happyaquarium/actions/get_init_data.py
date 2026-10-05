@@ -4,9 +4,6 @@ from . import action
 from ..game import catalog, pollution
 from ..storage import app_user_id
 
-TEN_YEARS = 10 * 365 * 86400
-
-
 def current_hunger(tank_item, now):
     # Hunger is inverted: 0 = full, 100 = starving. Crawlers have food_frequency 0 and never get hungry.
     item = catalog.ITEMS.get(tank_item["itemId"])
@@ -21,7 +18,7 @@ def tank_items(tank, now):
     return [{**row, "hunger": current_hunger(row, now), "last_hunger_update": now} for row in tank["items"]]
 
 
-def user_tank(player, tank, app_id, now):
+def user_tank(player, tank, app_id, now, config):
     return {
         "user_id": player["user_id"],
         "user_tank_id": tank["user_tank_id"],
@@ -29,7 +26,7 @@ def user_tank(player, tank, app_id, now):
         "is_loaded": 1,
         "title": tank["title"],
         "description": "",
-        "current_pollution": pollution.current(tank, now),
+        "current_pollution": pollution.current(tank, now, config),
         "tank_bg_id": tank["tank_bg_id"],
         "purchased_lighting": [],
         "slot": tank["slot"],
@@ -51,7 +48,7 @@ def user_tank(player, tank, app_id, now):
     }
 
 
-def app_user(player, now):
+def app_user(player, now, config):
     app_id = app_user_id(player["user_id"])
     return {
         "user_id": player["user_id"],
@@ -65,7 +62,7 @@ def app_user(player, now):
         "actionPoints": player["pearls"],
         "xp": player["xp"],
         "userSnacks": 0,
-        "userTanks": [user_tank(player, t, app_id, now) for t in player["tanks"]],
+        "userTanks": [user_tank(player, t, app_id, now, config) for t in player["tanks"]],
         "userFoods": [{"appUserId": app_id, "foodTypeId": int(k), "amount": v} for k, v in player["foods"].items()],
         "playingFriends": [],
         "isFan": 1,
@@ -78,7 +75,7 @@ def app_user(player, now):
 @action("get_init_data", saves=False)
 def get_init_data(ctx):
     now = int(time.time())
-    user = app_user(ctx.player, now)
+    user = app_user(ctx.player, now, ctx.config)
     return {
         "timestamp": now,
         "platform": catalog.PLATFORM,
@@ -102,7 +99,7 @@ def get_init_data(ctx):
         "flashAppUserMetaData": ctx.player["meta"],
         "userCompositeItems": {},
         # 101XP's $2.99/month paywall shows when date_subscription - date_subscription_current <= 0
-        "date_subscription": now + TEN_YEARS,
+        "date_subscription": now + ctx.config["subscription_days"] * 86400,
         "date_subscription_current": now,
         "products": [],
         "appProducts": [],

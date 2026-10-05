@@ -1,0 +1,31 @@
+{
+  "server": {
+    "assets_dir": "assets",
+    "players_dir": "data/players",
+    "default_user": "player",
+    "ruffle_url": "https://unpkg.com/@ruffle-rs/ruffle",
+    "flash_log": true
+  },
+  "new_player": {
+    "coins": 5000,
+    "pearls": 50,
+    "xp": 1,
+    "food": {
+      "1": 100,
+      "7": 10
+    },
+    "tank_title": "My Aquarium",
+    "starter_fish": 6,
+    "starter_fish_name": "Nemo"
+  },
+  "fish": {
+    "hunger_when_bought": 50
+  },
+  "feeding": {
+    "max_xp_per_session": 500
+  },
+  "pollution": {
+    "seconds_to_max_dirty": 172800
+  },
+  "subscription_days": 3650
+}

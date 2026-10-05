@@ -8,6 +8,7 @@ class Context:
     player: dict
     params: dict
     cdn: str
+    config: dict
 
 
 _ACTIONS = {}

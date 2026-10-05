@@ -14,7 +14,7 @@ def update_user_tank(ctx):
     tank = find_tank(player, int(data.get("userTankId", 0)))
     now = int(time.time())
 
-    before = pollution.current(tank, now)
+    before = pollution.current(tank, now, ctx.config)
     after = max(0, min(before, int(data.get("currentPollution", before))))
     tank["pollution"] = after
     tank["last_pollution_update"] = now

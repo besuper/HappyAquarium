@@ -1,11 +1,17 @@
+import json
 import os
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CONFIG_FILE = Path(os.environ.get("HA_CONFIG", PROJECT_ROOT / "config.json"))
 
-class Config:
-    ASSETS_DIR = Path(os.environ.get("HA_ASSETS_DIR", PROJECT_ROOT / "assets"))
-    PLAYERS_DIR = Path(os.environ.get("HA_PLAYERS_DIR", PROJECT_ROOT / "data" / "players"))
-    DEFAULT_USER = os.environ.get("HA_DEFAULT_USER", "player")
-    RUFFLE_URL = os.environ.get("HA_RUFFLE_URL", "https://unpkg.com/@ruffle-rs/ruffle")
-    FLASH_LOG = os.environ.get("HA_FLASH_LOG", "1") == "1"
+
+def load(path=CONFIG_FILE):
+    config = json.loads(Path(path).read_text(encoding="utf-8"))
+    server = config["server"]
+    for key in ("assets_dir", "players_dir"):
+        server[key] = (PROJECT_ROOT / server[key]).resolve()
+    return config
+
+
+CONFIG = load()

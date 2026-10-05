@@ -6,11 +6,7 @@ import time
 import zlib
 from pathlib import Path
 
-from .game.catalog import STARTER_FISH
-from .game.catalog import STARTING_FOOD as _STARTING_FOOD
-
 SAVE_VERSION = 1
-STARTING_FOOD = {str(k): v for k, v in _STARTING_FOOD.items()}
 USER_RE = re.compile(r"^[A-Za-z0-9_-]{1,32}$")
 
 _lock = threading.Lock()
@@ -24,7 +20,7 @@ def app_user_id(user_id: str) -> int:
     return zlib.crc32(user_id.encode()) % 1_000_000_000 + 1
 
 
-def new_tank_item(tank_item_id, item_id, name, user_tank_id=1, sex=1, age=100, x=380, y=250):
+def new_tank_item(tank_item_id, item_id, name, hunger, user_tank_id=1, sex=1, age=100, x=380, y=250):
     now = int(time.time())
     return {
         "tankItemId": tank_item_id,
@@ -32,7 +28,7 @@ def new_tank_item(tank_item_id, item_id, name, user_tank_id=1, sex=1, age=100, x
         "itemId": item_id,
         "name": name,
         "sex": sex,
-        "hunger": 50,  # 0 = full, 100 = starving
+        "hunger": hunger,
         "mood": 100,
         "status": 1,
         "dateCreated": now,
@@ -57,16 +53,17 @@ def new_tank_item(tank_item_id, item_id, name, user_tank_id=1, sex=1, age=100, x
     }
 
 
-def new_player(user_id: str) -> dict:
+def new_player(user_id: str, config: dict) -> dict:
+    start = config["new_player"]
     return {
         "version": SAVE_VERSION,
         "user_id": user_id,
         "name": user_id,
         "created": int(time.time()),
-        "coins": 5000,
-        "pearls": 50,
-        "xp": 1,
-        "foods": dict(STARTING_FOOD),
+        "coins": start["coins"],
+        "pearls": start["pearls"],
+        "xp": start["xp"],
+        "foods": dict(start["food"]),
         # "ts" is the tutorial step: its "Get My Fish" step needs the original store
         "meta": {"ts": "tutorialComplete"},
         "next_tank_item_id": 2,
@@ -75,21 +72,22 @@ def new_player(user_id: str) -> dict:
                 "user_tank_id": 1,
                 "tank_id": 1,
                 "slot": 0,
-                "title": "My Aquarium",
+                "title": start["tank_title"],
                 "gravel_id": 1,
                 "tank_bg_id": 0,
                 "lighting_id": 0,
                 "pollution": 0,
                 "last_pollution_update": int(time.time()),
-                "items": [new_tank_item(1, STARTER_FISH, "Nemo")],
+                "items": [new_tank_item(1, start["starter_fish"], start["starter_fish_name"], config["fish"]["hunger_when_bought"])],
             }
         ],
     }
 
 
 class PlayerStore:
-    def __init__(self, directory: Path):
+    def __init__(self, directory: Path, config: dict):
         self.directory = Path(directory)
+        self.config = config
 
     def _path(self, user_id: str) -> Path:
         if not valid_user(user_id):
@@ -101,7 +99,7 @@ class PlayerStore:
         with _lock:
             if path.exists():
                 return json.loads(path.read_text(encoding="utf-8"))
-        player = new_player(user_id)
+        player = new_player(user_id, self.config)
         self.save(player)
         return player
 
