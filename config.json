@@ -37,5 +37,19 @@
   },
   "placeholder_art": {
     "23": "swf/chest/Chest_Stub.swf"
-  }
+  },
+  "super_food_packs": [
+    {
+      "amount": 5,
+      "pearls": 3
+    },
+    {
+      "amount": 15,
+      "pearls": 8
+    },
+    {
+      "amount": 50,
+      "pearls": 25
+    }
+  ]
 }

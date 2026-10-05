@@ -23,7 +23,7 @@ played again in a browser, through [Ruffle](https://ruffle.rs/).
 - [x] Daily treasure chest (coins once a day, "play again" for pearls)
 - [x] Fish growth
 - [ ] Selling fish
-- [ ] Super food in the store, breeding
+- [ ] Breeding
 - [ ] UI text (`lang/en.xml` is lost: some labels show raw `TXT_*` keys)
 - [ ] Real tanks, gravels, wallpapers, decorations and most fish (lost, see [wanted list](docs/ASSET_FORMATS.md#wanted))
 - [ ] Sound effects and music (lost; served as silence)

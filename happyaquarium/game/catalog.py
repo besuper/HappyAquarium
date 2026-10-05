@@ -143,18 +143,20 @@ FOOD_ITEM_TYPES = {1: FOOD_REGULAR, 2: FOOD_SUPER}
 FOOD_STORE_ID_OFFSET = 10000
 
 
-def convert_store_food(raw):
-    amount = int(raw["amount"])
+ICON_REGULAR_FOOD, ICON_SUPER_FOOD = 1, 7
+
+
+def food_item(food_id, item_type, amount, coins, pearls, title, icon_frame):
     return {
-        "food_item_id": int(raw["storeFoodId"]),
-        "item_type": 1,
-        "coin_cost": int(raw["coinCost"]),
-        "action_point_cost": int(raw["actionPointCost"]),
+        "food_item_id": food_id,
+        "item_type": item_type,
+        "coin_cost": coins,
+        "action_point_cost": pearls,
         "food_amount": amount,
-        "icon_frame": 1,
+        "icon_frame": icon_frame,
         "level_required": 1,
-        "title": f"{amount} Fish Food",
-        "description": "Shakes of food for all fish.",
+        "title": title,
+        "description": "",
         "feed_image": "",
         "flags": 0,
         "active": 1,
@@ -163,9 +165,15 @@ def convert_store_food(raw):
 
 
 FOOD_ITEMS = {
-    int(raw["storeFoodId"]): convert_store_food(raw)
+    int(raw["storeFoodId"]): food_item(int(raw["storeFoodId"]), 1, int(raw["amount"]), int(raw["coinCost"]),
+                                       int(raw["actionPointCost"]), f"{raw['amount']} Fish Food", ICON_REGULAR_FOOD)
     for raw in _CATALOGUE["storeFoods"] if int(raw["foodTypeId"]) == FOOD_REGULAR
 }
+SUPER_FOOD_ID_OFFSET = 100
+for i, pack in enumerate(CONFIG["super_food_packs"]):
+    food_id = SUPER_FOOD_ID_OFFSET + i
+    FOOD_ITEMS[food_id] = food_item(food_id, 2, pack["amount"], pack.get("coins", 0), pack.get("pearls", 0),
+                                    f"{pack['amount']} Super Food", ICON_SUPER_FOOD)
 FOOD_STORE = {FOOD_STORE_ID_OFFSET + food_id: food_id for food_id in FOOD_ITEMS}
 
 
