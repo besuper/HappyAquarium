@@ -3,7 +3,7 @@ import time
 
 from . import action
 from ._common import OK
-from ..game import growth
+from ..game import growth, levels
 
 @action("feed_fish")
 def feed_fish(ctx):
@@ -36,6 +36,6 @@ def feed_fish(ctx):
     client_xp = int(json.loads(ctx.params.get("player_json") or "{}").get("xp") or 0)
 
     if player["xp"] < client_xp <= player["xp"] + ctx.config["feeding"]["max_xp_per_session"]:
-        player["xp"] = client_xp
-        
-    return OK
+        levels.gain_xp(player, client_xp)
+
+    return {**OK, "pearls": player["pearls"]}

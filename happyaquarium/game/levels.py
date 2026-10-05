@@ -21,6 +21,18 @@ def level_for_xp(xp):
     return MAX_LEVEL
 
 
+def level_up_pearls(old_level, new_level):
+    return sum(level // 10 + 1 for level in range(max(1, old_level), new_level))
+
+
+def gain_xp(player, new_xp):
+    if new_xp <= player["xp"]:
+        return
+    old_level = level_for_xp(player["xp"])
+    player["xp"] = new_xp
+    player["pearls"] += level_up_pearls(old_level, level_for_xp(new_xp))
+
+
 def xp_for_scrub(xp):
     level = level_for_xp(xp)
     return math.floor(XP_FOR_SCRUB * level ** 0.2) if level >= 15 else XP_FOR_SCRUB

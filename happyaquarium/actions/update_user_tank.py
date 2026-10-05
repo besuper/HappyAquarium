@@ -20,5 +20,5 @@ def update_user_tank(ctx):
     tank["last_pollution_update"] = now
 
     scrubs = math.ceil((before - after) / pollution.POLLUTION_PER_SCRUB)
-    player["xp"] += scrubs * levels.xp_for_scrub(player["xp"])
-    return {"error": 0, "xp": player["xp"]}
+    levels.gain_xp(player, player["xp"] + scrubs * levels.xp_for_scrub(player["xp"]))
+    return {"error": 0, "xp": player["xp"], "pearls": player["pearls"]}
