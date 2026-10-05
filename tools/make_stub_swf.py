@@ -197,11 +197,89 @@ def swf(width, height, tags, bg=(0, 0, 0)):
     return b"CWS" + bytes([10]) + raw + zlib.compress(body)
 
 
+ART = Path(__file__).resolve().parent / "stub_art"
+WATER_TOP, WATER_BOTTOM = (0x8f, 0xdc, 0xf0), (0x1f, 0x7c, 0xbf)
+SAND_TINT = (0xf0, 0xd9, 0x9c)
+
+
+def lossless_bitmap(bitmap_id, img):
+    """DefineBitsLossless2: 32-bit premultiplied ARGB."""
+    img = img.convert("RGBA")
+    w, h = img.size
+    px = bytearray()
+    for r, g, b, a in img.getdata():
+        px += bytes([a, r * a // 255, g * a // 255, b * a // 255])
+    return tag(36, struct.pack("<HBHH", bitmap_id, 5, w, h) + zlib.compress(bytes(px)))
+
+
+def bitmap_shape(shape_id, bitmap_id, x, y, w, h):
+    """DefineShape showing a bitmap 1:1 with its top-left corner at (x, y) pixels."""
+    x0, y0, x1, y1 = x * TWIP, y * TWIP, (x + w) * TWIP, (y + h) * TWIP
+    body = struct.pack("<H", shape_id) + rect(x0, x1, y0, y1)
+    body += bytes([1, 0x41]) + struct.pack("<H", bitmap_id)
+    m = Bits()
+    m.write(1, 1)
+    scale = TWIP << 16
+    n = nbits_signed(scale)
+    m.write(n, 5)
+    m.write_signed(scale, n)
+    m.write_signed(scale, n)
+    m.write(0, 1)
+    n = nbits_signed(x0, y0)
+    m.write(n, 5)
+    m.write_signed(x0, n)
+    m.write_signed(y0, n)
+    body += m.flush() + bytes([0])
+    b = Bits()
+    b.write(1, 4)
+    b.write(0, 4)
+    b.write(0, 1)
+    b.write(0b00011, 5)
+    n = nbits_signed(x0, y0)
+    b.write(n, 5)
+    b.write_signed(x0, n)
+    b.write_signed(y0, n)
+    b.write(1, 1)
+    for dx, dy in ((x1 - x0, 0), (0, y1 - y0), (x0 - x1, 0), (0, y0 - y1)):
+        b.write(1, 1)
+        b.write(1, 1)
+        n = nbits_signed(dx, dy)
+        b.write(n - 2, 4)
+        b.write(0, 1)
+        b.write(1 if dy else 0, 1)
+        b.write_signed(dy if dy else dx, n)
+    b.write(0, 6)
+    return tag(2, body + b.flush())
+
+
+def tint(img, color):
+    """Colourise a greyscale image (Fish with Attitude ships its "locked" art in grey)."""
+    from PIL import ImageOps
+    grey = ImageOps.grayscale(img)
+    coloured = ImageOps.colorize(grey, black=tuple(c // 3 for c in color), white=color).convert("RGBA")
+    coloured.putalpha(img.convert("RGBA").getchannel("A"))
+    return coloured
+
+
+def tank_background(w, h):
+    from PIL import Image
+    water = Image.new("RGBA", (w, h))
+    for y in range(h):
+        t = y / (h - 1)
+        water.paste(tuple(round(a + (b - a) * t) for a, b in zip(WATER_TOP, WATER_BOTTOM)) + (255,), (0, y, w, y + 1))
+    # Keep only the frame's light edges, drawn as faint glass highlights over the water
+    frame = Image.open(ART / "fwa_tank_frame.png").convert("L").resize((w, h), Image.LANCZOS)
+    edges = frame.point(lambda v: 110 if v > 200 else 0)
+    water.paste(Image.new("RGBA", (w, h), (255, 255, 255, 255)), (0, 0), edges)
+    return water
+
+
 def tank_stub(w, h):
+    # FishTank centres this clip (x = width/2), so draw around the origin
     return swf(w, h, [
-        # FishTank centres this clip (x = width/2), so draw around the origin
-        define_shape_rect(1, -w // 2, -h // 2, w, h, (0x2a, 0x7f, 0xc9)),  # water
-        place(1, 1),
+        lossless_bitmap(1, tank_background(w, h)),
+        bitmap_shape(2, 1, -w // 2, -h // 2, w, h),
+        place(1, 2),
     ])
 
 
@@ -214,12 +292,21 @@ def dirt_stub(w, h):
     ])
 
 
-def gravel_stub(w, h, class_name):
+def gravel_art(w):
+    from PIL import Image
+    sand = Image.open(ART / "fwa_sand.png")
+    sand = sand.resize((w, round(sand.height * w / sand.width)), Image.LANCZOS)
+    return tint(sand, SAND_TINT)
+
+
+def gravel_stub(w, class_name):
     # Gravel.setMCByTankId expects the loaded root to expose a "gravel" child.
-    return swf(w, h, [
-        define_shape_rect(1, 0, 0, w, h, (0xd9, 0xc2, 0x8a)),
-        linked_sprite(2, class_name, 1),
-        place(1, 2, "gravel"),
+    sand = gravel_art(w)
+    return swf(w, sand.height, [
+        lossless_bitmap(1, sand),
+        bitmap_shape(2, 1, 0, 0, sand.width, sand.height),
+        linked_sprite(3, class_name, 2),
+        place(1, 3, "gravel"),
     ])
 
 
@@ -250,6 +337,19 @@ def chest_stub(w, h):
     ])
 
 
+LOADING_SIZE = (596, 392)
+
+
+def loading_image():
+    # Shown by the preloader in its frame (img_to_load); the logo covers the top centre
+    from PIL import Image
+    img = Image.open(ART / "fwa_loading.png").convert("RGB")
+    w, h = LOADING_SIZE
+    scaled = img.resize((round(img.width * h / img.height), h), Image.LANCZOS)
+    left = (scaled.width - w) // 2
+    return scaled.crop((left, 0, left + w, h))
+
+
 def main(assets):
     tank_dir = assets / "swf" / "tank"
     prop_dir = assets / "swf" / "prop"
@@ -260,10 +360,13 @@ def main(assets):
     (tank_dir / "Tank_Stub_Dirt.swf").write_bytes(dirt_stub(w, h))
     # Gravel.getTankScaledGravelUrl appends a size suffix to art_url
     for suffix in ("50", "100", "150", "Small", "Medium", "Large"):
-        (tank_dir / f"Gravel_Stub{suffix}.swf").write_bytes(gravel_stub(w, 80, f"StubGravel{suffix}"))
+        (tank_dir / f"Gravel_Stub{suffix}.swf").write_bytes(gravel_stub(w, f"StubGravel{suffix}"))
     chest_dir = assets / "swf" / "chest"
     chest_dir.mkdir(parents=True, exist_ok=True)
     (chest_dir / "Chest_Stub.swf").write_bytes(chest_stub(60, 45))
+    img_dir = assets / "img"
+    img_dir.mkdir(parents=True, exist_ok=True)
+    loading_image().save(img_dir / "loading.png")
     (prop_dir / "Prop_Gift.swf").write_bytes(decor_stub(40, 40, (0xe0, 0x30, 0x40), "StubGift"))
     print(f"stubs written to {assets / 'swf'}")
 
